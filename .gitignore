@@ -1,6 +1,6 @@
 node_modules/
 workspace/
-nnn.ego-info/
+nnn.egg-info/
 docs/
 __pycache__/
 
