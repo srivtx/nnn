@@ -132,6 +132,7 @@ def chat(
     effective_temp = temperature if temperature is not None else config.TEMPERATURE
     max_iterations = 15  # safety cap on tool-call loops
     consecutive_errors = 0  # detect stuck loops
+    duplicate_count = 0     # detect exact same call repeated
     last_tool_call = None   # (name, args) — detect duplicate calls
 
     for iteration in range(max_iterations):
@@ -227,15 +228,25 @@ def chat(
             # Detect duplicate calls (same tool + same args = stuck)
             call_sig = (tc.function.name, tc.function.arguments)
             if call_sig == last_tool_call:
+                duplicate_count += 1
+                if duplicate_count >= 2:
+                    console.print("    [dim]stuck in loop (repeat call), moving on[/dim]")
+                    return result
                 consecutive_errors += 1
+            else:
+                duplicate_count = 0
             last_tool_call = call_sig
 
             # Detect stuck error loops (e.g. edit_file failing, wrong runtime)
             result_lower = str(result).lower()
-            if ("error" in result_lower or "exit code:" in result_lower
-                    or "stderr" in result_lower or "traceback" in result_lower):
+            ERROR_SIGNALS = [
+                "error", "exit code:", "stderr", "traceback",
+                "refused", "timed out", "can't open", "no such file",
+                "command not found", "permission denied", "syntax error",
+            ]
+            if any(sig in result_lower for sig in ERROR_SIGNALS):
                 consecutive_errors += 1
-                if consecutive_errors >= 3:
+                if consecutive_errors >= 2:
                     console.print("    [dim]stuck in error loop, moving on[/dim]")
                     return result
             else:

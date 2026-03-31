@@ -36,6 +36,126 @@ TEAM = {
 }
 
 
+# ═══════════════════════════════════════════════════════════
+#  LANGUAGE CONFIG REGISTRY — single source of truth
+#  Adding a new language = adding one dict entry. No if/else.
+# ═══════════════════════════════════════════════════════════
+
+LANG_CONFIG = {
+    "javascript": {
+        "extensions": [".js", ".mjs", ".cjs"],
+        "dep_file": "package.json",
+        "dep_init": "npm init -y",
+        "dep_install": "npm install {packages}",
+        "syntax_check": "node --check {file}",
+        "env_patterns": [r'process\.env\.([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {
+            "express": "express body-parser cors dotenv bcryptjs jsonwebtoken",
+            "fastify": "fastify dotenv",
+            "default": "",
+        },
+        "run_script": {"start": "node {main}"},
+    },
+    "python": {
+        "extensions": [".py"],
+        "dep_file": "requirements.txt",
+        "dep_init": None,
+        "dep_install": "pip install {packages}",
+        "syntax_check": "python3 -m py_compile {file}",
+        "env_patterns": [
+            r'os\.environ\[?["\']([A-Z_][A-Z0-9_]*)',
+            r'os\.getenv\(["\']([A-Z_][A-Z0-9_]*)',
+        ],
+        "common_deps": {
+            "flask": "flask python-dotenv",
+            "fastapi": "fastapi uvicorn python-dotenv",
+            "django": "django python-dotenv",
+            "default": "",
+        },
+        "run_script": None,
+    },
+    "typescript": {
+        "extensions": [".ts", ".tsx"],
+        "dep_file": "package.json",
+        "dep_init": "npm init -y",
+        "dep_install": "npm install {packages}",
+        "syntax_check": "npx tsc --noEmit --allowJs --skipLibCheck {file} 2>&1; true",
+        "env_patterns": [r'process\.env\.([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {
+            "express": "express @types/express typescript tsx dotenv",
+            "default": "typescript tsx",
+        },
+        "run_script": {"start": "npx tsx {main}"},
+    },
+    "go": {
+        "extensions": [".go"],
+        "dep_file": "go.mod",
+        "dep_init": "go mod init app",
+        "dep_install": "go mod tidy",
+        "syntax_check": "go vet {file} 2>&1; true",
+        "env_patterns": [r'os\.Getenv\(["\']([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {"default": ""},
+        "run_script": None,
+    },
+    "rust": {
+        "extensions": [".rs"],
+        "dep_file": "Cargo.toml",
+        "dep_init": None,
+        "dep_install": None,
+        "syntax_check": None,  # Rust needs cargo project structure
+        "env_patterns": [r'env::var\(["\']([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {"default": ""},
+        "run_script": None,
+    },
+    "java": {
+        "extensions": [".java"],
+        "dep_file": None,
+        "dep_init": None,
+        "dep_install": None,
+        "syntax_check": "javac -d /tmp {file} 2>&1; true",
+        "env_patterns": [r'System\.getenv\(["\']([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {"default": ""},
+        "run_script": None,
+    },
+    "c": {
+        "extensions": [".c", ".h"],
+        "dep_file": None, "dep_init": None, "dep_install": None,
+        "syntax_check": "gcc -fsyntax-only {file} 2>&1; true",
+        "env_patterns": [r'getenv\(["\']([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {"default": ""}, "run_script": None,
+    },
+    "c++": {
+        "extensions": [".cpp", ".cc", ".cxx", ".hpp"],
+        "dep_file": None, "dep_init": None, "dep_install": None,
+        "syntax_check": "g++ -fsyntax-only {file} 2>&1; true",
+        "env_patterns": [r'getenv\(["\']([A-Z_][A-Z0-9_]*)'],
+        "common_deps": {"default": ""}, "run_script": None,
+    },
+}
+
+# Files to skip during syntax checks
+_SKIP_FILES = {"package.json", "package-lock.json", ".env", "go.sum",
+               "go.mod", "Cargo.toml", "Cargo.lock", "requirements.txt",
+               ".gitignore", "README.md", "node_modules"}
+
+# Env vars that should NOT go in .env
+_SYSTEM_VARS = {"PATH", "HOME", "USER", "SHELL", "PWD", "NODE_ENV",
+                "PYTHONPATH", "LANG", "TERM", "EDITOR", "HOSTNAME"}
+
+# Smart defaults for common env vars
+_ENV_DEFAULTS = {
+    "SECRET_KEY": "changeme-secret-key-here",
+    "ACCESS_TOKEN_SECRET": "changeme-jwt-secret",
+    "JWT_SECRET": "changeme-jwt-secret",
+    "DATABASE_URL": "sqlite:///db.sqlite3",
+    "MONGO_URI": "mongodb://localhost:27017/myapp",
+    "REDIS_URL": "redis://localhost:6379",
+    "PORT": "3000",
+    "DEBUG": "true",
+    "API_KEY": "your-api-key-here",
+}
+
+
 def _list_workspace_files() -> str:
     """List files in workspace/ for context."""
     workspace = config.WORKSPACE_DIR
@@ -43,9 +163,12 @@ def _list_workspace_files() -> str:
         return ""
     files = []
     for root, _, filenames in os.walk(workspace):
+        # Skip node_modules and other heavy dirs
+        dirnames_to_skip = {"node_modules", "__pycache__", ".git", "venv"}
         for f in filenames:
             rel = os.path.relpath(os.path.join(root, f), workspace)
-            files.append(rel)
+            if not any(skip in rel for skip in dirnames_to_skip):
+                files.append(rel)
     return ", ".join(sorted(files)) if files else ""
 
 
@@ -58,21 +181,22 @@ def run_task(task: str):
     """
     task_start = time.time()
 
-    # 0. Analyze the project first — detect language, runtime, framework
+    # ── Phase 0: Analyze project ─────────────────────────
     project = _analyze_project(task)
     if project.get("language"):
         console.print(f"  [dim]detected:[/dim] {project.get('language', '?')} · {project.get('runtime', '?')} · {project.get('framework') or 'no framework'}")
 
-    # 1. Ask the Orchestrator (LLM) to make a plan and pick agents
-    #    Uses smaller max_tokens since plan output is compact JSON
+    # ── Phase 1: Create & optimize plan ──────────────────
     plan = _create_plan(task, project)
     
     if not plan or not plan.get("steps"):
         console.print("  [red]failed to create plan[/red]")
         return
 
-    # SAFETY: Programmatically strip BugFixer steps for servers
-    # Small models ignore prompt-level warnings, so we enforce it in code
+    # Post-process: collapse fragmented Developer steps into one
+    plan["steps"] = _collapse_developer_steps(plan["steps"])
+
+    # Post-process: strip BugFixer for servers (small models ignore prompt)
     if project.get("is_server"):
         original_count = len(plan["steps"])
         plan["steps"] = [s for s in plan["steps"] if s.get("agent") != "BugFixer"]
@@ -87,9 +211,11 @@ def run_task(task: str):
         instr = step.get('instruction', '')[:60]
         console.print(f"  [dim]{i}.[/dim] [bold]{agent}[/bold] [dim]{instr}[/dim]")
     console.print()
+
+    # ── Phase 2: Pre-execution setup ─────────────────────
+    dep_log = _setup_dependencies(project)
     
-    # Track what has happened so far to pass as context
-    # Include existing workspace files so agents know what's already there
+    # Build workspace context for agents
     existing_files = _list_workspace_files()
     workspace_context = f"Main Task: {task}\n\n"
     
@@ -100,18 +226,25 @@ def run_task(task: str):
         workspace_context += "WARNING: This is a SERVER. Do NOT run it with run_command — it will timeout forever. Only write code, do not run it.\n"
     workspace_context += "\n"
     
+    if dep_log:
+        workspace_context += f"Dependencies installed:\n{dep_log}\n"
     if existing_files:
         workspace_context += f"Existing files in workspace:\n{existing_files}\n\n"
     workspace_context += "Execution Log:\n"
     
-    # 2. Build a dependency graph and execute steps
-    #    Independent steps run in PARALLEL; dependent steps run sequentially
+    # ── Phase 3: Execute agents ──────────────────────────
     if config.PARALLEL_AGENTS and len(plan["steps"]) > 1:
         workspace_context = _execute_parallel(plan["steps"], task, workspace_context)
     else:
         workspace_context = _execute_sequential(plan["steps"], workspace_context)
 
-    # 3. Final synthesis (uses smaller max_tokens)
+    # ── Phase 4: Post-execution checks ───────────────────
+    _generate_env_template(project)
+    check_log = _syntax_check(project)
+    if check_log:
+        workspace_context += f"\nSyntax Check:\n{check_log}\n"
+
+    # ── Phase 5: Final synthesis ─────────────────────────
     _generate_final_summary(task, workspace_context)
 
     # Compact stats line
@@ -263,6 +396,252 @@ def _build_execution_waves(steps: list[dict]) -> list[list[dict]]:
     
     return waves
 
+
+# ═══════════════════════════════════════════════════════════
+#  PLAN POST-PROCESSING — fix small model mistakes in code
+# ═══════════════════════════════════════════════════════════
+
+def _collapse_developer_steps(steps: list[dict]) -> list[dict]:
+    """Merge consecutive Developer steps into one comprehensive step.
+    
+    The 3B model tends to split one task into many Developer steps,
+    but each step runs with fresh context, producing fragmented code.
+    This merges them so the Developer writes everything in one go.
+    
+    Handles edge cases:
+      - Preserves non-Developer steps and their order
+      - Keeps interleaved sequences (Dev, Researcher, Dev) separate
+      - Only collapses when > 1 consecutive Dev steps exist
+    """
+    collapsed = []
+    dev_buffer = []
+    
+    for step in steps:
+        if step.get("agent") == "Developer":
+            dev_buffer.append(step.get("instruction", ""))
+        else:
+            # Flush any buffered Dev steps before adding non-Dev step
+            if dev_buffer:
+                collapsed.append(_merge_dev_instructions(dev_buffer))
+                dev_buffer = []
+            collapsed.append(step)
+    
+    # Flush remaining
+    if dev_buffer:
+        collapsed.append(_merge_dev_instructions(dev_buffer))
+    
+    return collapsed
+
+
+def _merge_dev_instructions(instructions: list[str]) -> dict:
+    """Merge multiple Developer instructions into one."""
+    if len(instructions) == 1:
+        return {"agent": "Developer", "instruction": instructions[0]}
+    
+    combined = "Do ALL of the following in a SINGLE complete file:\n"
+    for i, instr in enumerate(instructions, 1):
+        combined += f"{i}. {instr}\n"
+    combined += "\nCombine everything into ONE file using write_file. Do NOT create separate files."
+    return {"agent": "Developer", "instruction": combined}
+
+
+# ═══════════════════════════════════════════════════════════
+#  PRE-EXECUTION SETUP — install deps, init project
+# ═══════════════════════════════════════════════════════════
+
+def _setup_dependencies(project: dict) -> str:
+    """Install dependencies before agents run. Fully generic via LANG_CONFIG."""
+    lang = project.get("language")
+    cfg = LANG_CONFIG.get(lang)
+    if not cfg:
+        return ""
+    
+    framework = project.get("framework")
+    common = cfg.get("common_deps", {})
+    pkgs = common.get(framework, common.get("default", ""))
+    
+    # Skip if no dep manager or no packages to install
+    if not cfg.get("dep_install") or not pkgs:
+        return ""
+    
+    from tools import run_command
+    log = ""
+    
+    # Init project if needed and dep file doesn't exist yet
+    dep_file = cfg.get("dep_file")
+    if cfg.get("dep_init") and dep_file:
+        dep_path = os.path.join(WORKSPACE_DIR, dep_file)
+        if not os.path.exists(dep_path):
+            result = run_command(cfg["dep_init"])
+            log += f"Init: {result}\n"
+            console.print(f"  [dim]init: {cfg['dep_init']}[/dim]")
+    
+    # Install packages
+    cmd = cfg["dep_install"].format(packages=pkgs)
+    result = run_command(cmd)
+    console.print(f"  [dim]installed: {pkgs}[/dim]")
+    log += f"Installed: {pkgs}\n"
+    
+    # Patch package.json scripts (JS/TS)
+    if cfg.get("run_script") and dep_file == "package.json":
+        _patch_package_json(project, cfg)
+    
+    return log
+
+
+def _patch_package_json(project: dict, cfg: dict):
+    """Add start/dev scripts to package.json."""
+    pkg_path = os.path.join(WORKSPACE_DIR, "package.json")
+    if not os.path.exists(pkg_path):
+        return
+    try:
+        with open(pkg_path, "r") as f:
+            pkg = json.loads(f.read())
+        
+        # Detect main file
+        main_file = _detect_main_file(project)
+        scripts = {}
+        for name, template in (cfg.get("run_script") or {}).items():
+            scripts[name] = template.format(main=main_file)
+        
+        pkg.setdefault("scripts", {})
+        pkg["scripts"].update(scripts)
+        
+        with open(pkg_path, "w") as f:
+            f.write(json.dumps(pkg, indent=2) + "\n")
+    except Exception:
+        pass
+
+
+def _detect_main_file(project: dict) -> str:
+    """Detect the main entry file in workspace."""
+    lang = project.get("language")
+    cfg = LANG_CONFIG.get(lang, {})
+    exts = cfg.get("extensions", [])
+    
+    # Prioritized main file names
+    MAIN_NAMES = ["app", "index", "server", "main"]
+    
+    for name in MAIN_NAMES:
+        for ext in exts:
+            candidate = f"{name}{ext}"
+            if os.path.isfile(os.path.join(WORKSPACE_DIR, candidate)):
+                return candidate
+    
+    # Fallback: first file matching a known extension
+    try:
+        for f in os.listdir(WORKSPACE_DIR):
+            if any(f.endswith(ext) for ext in exts):
+                return f
+    except Exception:
+        pass
+    
+    return "app.js" if lang == "javascript" else "main.py"
+
+
+# ═══════════════════════════════════════════════════════════
+#  POST-EXECUTION CHECKS — syntax, env, validation
+# ═══════════════════════════════════════════════════════════
+
+def _syntax_check(project: dict) -> str:
+    """Run syntax-only check on workspace files. Generic via LANG_CONFIG."""
+    lang = project.get("language")
+    cfg = LANG_CONFIG.get(lang)
+    if not cfg or not cfg.get("syntax_check"):
+        return ""
+    
+    from tools import run_command
+    results = []
+    check_cmd = cfg["syntax_check"]
+    target_exts = cfg.get("extensions", [])
+    
+    try:
+        entries = os.listdir(WORKSPACE_DIR)
+    except Exception:
+        return ""
+    
+    for fname in sorted(entries):
+        if fname in _SKIP_FILES:
+            continue
+        fpath = os.path.join(WORKSPACE_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        if target_exts and not any(fname.endswith(ext) for ext in target_exts):
+            continue
+        
+        cmd = check_cmd.format(file=fname)
+        result = run_command(cmd)
+        
+        # Determine pass/fail
+        result_clean = result.strip()
+        if not result_clean or result_clean == "(no output)":
+            results.append(f"{fname}: ✓")
+        else:
+            results.append(f"{fname}: issues found")
+            # Show first 200 chars of the error
+            results.append(f"  {result_clean[:200]}")
+    
+    if results:
+        console.print(f"  [dim]syntax check:[/dim]")
+        for r in results:
+            console.print(f"    [dim]{r}[/dim]")
+    
+    return "\n".join(results)
+
+
+def _generate_env_template(project: dict):
+    """Scan workspace files for env var usage, create .env template. Any language."""
+    lang = project.get("language")
+    cfg = LANG_CONFIG.get(lang)
+    if not cfg or not cfg.get("env_patterns"):
+        return
+    
+    env_vars = set()
+    patterns = cfg["env_patterns"]
+    
+    try:
+        entries = os.listdir(WORKSPACE_DIR)
+    except Exception:
+        return
+    
+    for fname in entries:
+        fpath = os.path.join(WORKSPACE_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+        # Skip binaries, lockfiles, hidden files, node_modules
+        if fname.startswith(".") or fname in _SKIP_FILES:
+            continue
+        try:
+            with open(fpath, "r", errors="replace") as f:
+                content = f.read()
+            for pat in patterns:
+                env_vars.update(re.findall(pat, content))
+        except Exception:
+            pass
+    
+    # Filter out system vars
+    env_vars -= _SYSTEM_VARS
+    
+    if not env_vars:
+        return
+    
+    env_path = os.path.join(WORKSPACE_DIR, ".env")
+    if os.path.exists(env_path):
+        return  # don't overwrite existing
+    
+    lines = []
+    for var in sorted(env_vars):
+        default = _ENV_DEFAULTS.get(var, f"your_{var.lower()}_here")
+        lines.append(f"{var}={default}")
+    
+    with open(env_path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    console.print(f"  [dim]created .env with {len(env_vars)} var(s): {', '.join(sorted(env_vars))}[/dim]")
+
+
+# ═══════════════════════════════════════════════════════════
+#  PROJECT ANALYSIS — detect language, runtime, framework
+# ═══════════════════════════════════════════════════════════
 
 def _analyze_project(task: str) -> dict:
     """

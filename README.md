@@ -95,7 +95,7 @@ There is only **one AI model** running. Each "agent" is just the same model call
 
 ## Learn How to Build This
 
-This project comes with **12 step-by-step lessons** that teach you how to build the entire system from scratch. Each lesson adds one concept, and you test it before moving on.
+This project comes with **14 step-by-step lessons** that teach you how to build the entire system from scratch. Each lesson adds one concept, and you test it before moving on.
 
 | #   | Lesson                                                  | What you build                                            |
 | --- | ------------------------------------------------------- | --------------------------------------------------------- |
@@ -111,8 +111,10 @@ This project comes with **12 step-by-step lessons** that teach you how to build 
 | 10  | [Surgical Editing](docs/10_surgical_editing.md)         | Line-by-line editing tools (edit_lines, insert_code)      |
 | 11  | [Small-Model Safety](docs/11_small_model_safety.md)     | Safety nets for 3-4B models that fail often               |
 | 12  | [CLI & Packaging](docs/12_cli_and_packaging.md)         | Turn it into an installable `nnn` command                 |
+| 13  | [Project Intelligence](docs/13_project_intelligence.md) | Detect language/runtime, auto-install deps, syntax check  |
+| 14  | [Loop Hardening](docs/14_loop_hardening.md)             | Catch stealth errors, duplicate calls, smarter bailout    |
 
-Start at Lesson 01. Each lesson builds on the previous one. By Lesson 12 you have the complete system.
+Start at Lesson 01. Each lesson builds on the previous one. By Lesson 14 you have the complete system.
 
 **New to programming?** Start with [docs/BEGINNER_GUIDE.md](docs/BEGINNER_GUIDE.md) instead — it's a gentler introduction.
 

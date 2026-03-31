@@ -35,8 +35,8 @@ CRITICAL — SERVERS (Express, Flask, FastAPI, http.server, etc.):
 # ── Language → default filename mapping ──
 _LANG_TO_FILE = {
     "python": "app.py",         "py": "app.py",
-    "javascript": "index.js",   "js": "index.js",
-    "typescript": "server.ts",  "ts": "server.ts",
+    "javascript": "app.js",     "js": "app.js",
+    "typescript": "app.ts",     "ts": "app.ts",
     "go": "main.go",            "rust": "main.rs",
     "java": "Main.java",        "c": "main.c",
     "cpp": "main.cpp",          "c++": "main.cpp",
