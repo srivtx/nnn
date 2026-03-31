@@ -3,15 +3,24 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nnn"
+name = "nnn-agent"
 version = "0.1.0"
 description = "Multi-agent coding system powered by local LLMs"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "srivtx"}]
 requires-python = ">=3.10"
+keywords = ["ai", "agent", "llm", "coding", "multi-agent", "local-llm"]
 dependencies = [
     "openai>=1.0",
     "httpx",
     "rich",
 ]
+
+[project.urls]
+Homepage = "https://github.com/srivtx/nnn"
+Repository = "https://github.com/srivtx/nnn"
+Issues = "https://github.com/srivtx/nnn/issues"
 
 [project.scripts]
 nnn = "main:main"
