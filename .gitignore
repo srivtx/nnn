@@ -1,0 +1,7 @@
+node_modules/
+workspace/
+nnn.ego-info/
+docs/
+__pycache__/
+
+
