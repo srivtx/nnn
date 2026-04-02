@@ -28,7 +28,7 @@
     <main class="relative z-10">
 
       <!-- ─── HERO ─── -->
-      <section class="relative py-24 sm:py-40 bg-transparent z-10 px-4 sm:px-6 flex flex-col items-center justify-center text-center overflow-hidden">
+      <section class="relative min-h-[100dvh] py-24 sm:py-40 bg-transparent z-10 px-4 sm:px-6 flex flex-col items-center justify-center text-center overflow-hidden">
         
         <!-- Hero-specific spatial grid -->
         <div class="absolute inset-0 z-[-1] pointer-events-none">
