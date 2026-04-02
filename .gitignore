@@ -4,4 +4,9 @@ nnn.egg-info/
 docs/
 __pycache__/
 
+.npm
 
+
+dist 
+
+venv
