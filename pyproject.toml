@@ -7,7 +7,7 @@ name = "nnn-agent"
 version = "0.1.0"
 description = "Multi-agent coding system powered by local LLMs"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "srivtx"}]
 requires-python = ">=3.10"
 keywords = ["ai", "agent", "llm", "coding", "multi-agent", "local-llm"]
