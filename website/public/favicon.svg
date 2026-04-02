@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Shader colormap approximations -->
+    <!-- Pink / Magenta -->
+    <linearGradient id="gMag" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#ec4899" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#ec4899" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Acid Green -->
+    <linearGradient id="gGrn" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#bef264" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Cyan / Violet -->
+    <linearGradient id="gCyn" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Shader Needle Geometry: Long, sharp intersecting capsule -->
+    <path id="needle" d="M -16 0 C -16 -120, -4 -200, 0 -240 C 4 -200, 16 -120, 16 0 Z" />
+
+    <!-- Bloom filter matching the WebGL scattering -->
+    <filter id="bloom" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur1" />
+      <feGaussianBlur stdDeviation="1" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Transparent base -->
+
+  <!-- Geometric Shader Match (10 Petals) -->
+  <g transform="translate(256, 256)" style="mix-blend-mode: screen" filter="url(#bloom)">
+    
+    <!-- 10 Spikes intersecting dynamically like the WebGL loops -->
+    
+    <!-- Magenta segment -->
+    <use href="#needle" transform="rotate(0)" fill="url(#gMag)" />
+    <use href="#needle" transform="rotate(36)" fill="url(#gMag)" />
+    <use href="#needle" transform="rotate(72)" fill="url(#gMag)" />
+    
+    <!-- Cyan/Violet transition -->
+    <use href="#needle" transform="rotate(108)" fill="url(#gCyn)" />
+    <use href="#needle" transform="rotate(144)" fill="url(#gCyn)" />
+    <use href="#needle" transform="rotate(180)" fill="url(#gCyn)" />
+    
+    <!-- Acid Green segment -->
+    <use href="#needle" transform="rotate(216)" fill="url(#gGrn)" />
+    <use href="#needle" transform="rotate(252)" fill="url(#gGrn)" />
+    <use href="#needle" transform="rotate(288)" fill="url(#gGrn)" />
+    
+    <!-- Violet back to Magenta -->
+    <use href="#needle" transform="rotate(324)" fill="url(#gCyn)" />
+
+    <!-- A central intense micro-needle array simulating the core density of SDF caps -->
+    <g transform="scale(0.4) rotate(18)">
+      <use href="#needle" transform="rotate(0)" fill="#ffffff" opacity="0.6"/>
+      <use href="#needle" transform="rotate(72)" fill="#ffffff" opacity="0.6"/>
+      <use href="#needle" transform="rotate(144)" fill="#ffffff" opacity="0.6"/>
+      <use href="#needle" transform="rotate(216)" fill="#ffffff" opacity="0.6"/>
+      <use href="#needle" transform="rotate(288)" fill="#ffffff" opacity="0.6"/>
+    </g>
+
+    <!-- Super intense core pin -->
+    <circle r="6" fill="#ffffff" opacity="1.0" />
+  </g>
+</svg>

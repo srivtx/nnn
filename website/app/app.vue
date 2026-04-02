@@ -277,6 +277,9 @@ useHead({
   title: 'nnn — code that writes itself',
   meta: [
     { name: 'description', content: 'Five specialized AI agents that design, write, fix, and research code. Running entirely on your machine.' },
+  ],
+  link: [
+    { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }
   ]
 });
 
